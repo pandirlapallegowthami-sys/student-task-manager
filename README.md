@@ -308,3 +308,4 @@ Developed as a showcase portfolio project demonstrating:
 - Production-grade Flask backend architecture with clean separation of concerns.
 - Enterprise-grade security practices (CSRF, ownership verification, password hashing).
 - Aesthetic UI/UX design with responsive CSS, interactive Chart.js visualizations, and asynchronous JavaScript interactions.
+"# student-task-manager" 
