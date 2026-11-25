@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Productivity Analytics - Student Task Manager{% endblock %}
+{% block page_title %}Productivity & Performance Analytics{% endblock %}
+{% block page_subtitle %}Live visualization of your task completion rates, academic workload, and weekly trends{% endblock %}
+
+{% block extra_css %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- KPI Metric Highlights -->
+    <div class="row g-3 mb-4">
+        <!-- Productivity Score -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-purple">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <div class="stat-details">
+                    <div class="stat-value">{{ data.metrics.productivity_score }}<span class="fs-6 text-muted">/100</span></div>
+                    <div class="stat-label">Productivity Index</div>
+                    <div class="stat-meta">
+                        {% if data.metrics.productivity_score >= 80 %}
+                        <span class="text-success fw-bold"><i class="bi bi-star-fill"></i> High Momentum</span>
+                        {% elif data.metrics.productivity_score >= 50 %}
+                        <span class="text-primary fw-bold"><i class="bi bi-check-circle"></i> On Track</span>
+                        {% else %}
+                        <span class="text-warning fw-bold"><i class="bi bi-arrow-up-circle"></i> Needs Focus</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completion Rate -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-green">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="stat-details">
+                    <div class="stat-value">{{ data.metrics.completion_rate }}%</div>
+                    <div class="stat-label">Completion Rate</div>
+                    <div class="stat-meta">{{ data.metrics.completed_tasks }} of {{ data.metrics.total_tasks }} tasks resolved</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue Tasks -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-coral">
+                    <i class="bi bi-exclamation-octagon"></i>
+                </div>
+                <div class="stat-details">
+                    <div class="stat-value text-danger">{{ data.metrics.overdue_tasks }}</div>
+                    <div class="stat-label">Overdue Tasks</div>
+                    <div class="stat-meta">Requires urgent catchup</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Workload -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-blue">
+                    <i class="bi bi-folder2-open"></i>
+                </div>
+                <div class="stat-details">
+                    <div class="stat-value">{{ data.metrics.total_tasks }}</div>
+                    <div class="stat-label">Total Workload</div>
+                    <div class="stat-meta">Managed across all courses</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1: Weekly Completion Trend & Monthly Productivity Trend -->
+    <div class="row g-4 mb-4">
+        <!-- Chart 1: Weekly Task Completion Chart -->
+        <div class="col-lg-7">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-calendar-check text-primary"></i>
+                        <span>Weekly Task Completion (Last 7 Days)</span>
+                    </h5>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Real-Time Data</span>
+                </div>
+                <div class="card-modern-body p-4">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 2: Monthly Productivity Trend -->
+        <div class="col-lg-5">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-graph-up-arrow text-success"></i>
+                        <span>Monthly Productivity Trend (Last 6 Months)</span>
+                    </h5>
+                </div>
+                <div class="card-modern-body p-4">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Subject-wise, Priority-wise, Status Breakdown -->
+    <div class="row g-4">
+        <!-- Chart 3: Subject-wise Task Distribution -->
+        <div class="col-lg-4">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-pie-chart-fill text-primary"></i>
+                        <span>Subject-Wise Distribution</span>
+                    </h5>
+                </div>
+                <div class="card-modern-body p-4">
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="subjectChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 4: Priority-wise Task Distribution -->
+        <div class="col-lg-4">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-funnel-fill text-warning"></i>
+                        <span>Priority Distribution</span>
+                    </h5>
+                </div>
+                <div class="card-modern-body p-4">
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 5: Completed vs Pending vs In Progress -->
+        <div class="col-lg-4">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-check-all text-success"></i>
+                        <span>Task Status Breakdown</span>
+                    </h5>
+                </div>
+                <div class="card-modern-body p-4">
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Analytics Data injected securely from Flask
+    const analytics = {{ data|tojson }};
+
+    // Chart Global Styling Options
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.color = '#64748B';
+
+    // 1. Weekly Task Completion Chart (Grouped Bar Chart)
+    const ctxWeekly = document.getElementById('weeklyChart').getContext('2d');
+    new Chart(ctxWeekly, {
+        type: 'bar',
+        data: {
+            labels: analytics.weekly.labels,
+            datasets: [
+                {
+                    label: 'Tasks Completed',
+                    data: analytics.weekly.completed,
+                    backgroundColor: '#00B894',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                },
+                {
+                    label: 'Tasks Created',
+                    data: analytics.weekly.created,
+                    backgroundColor: '#6C5CE7',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { padding: 10 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    grid: { color: '#F1F5F9' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // 2. Monthly Productivity Trend (Smooth Line with Gradient)
+    const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+    const monthlyGrad = ctxMonthly.createLinearGradient(0, 0, 0, 250);
+    monthlyGrad.addColorStop(0, 'rgba(108, 92, 231, 0.35)');
+    monthlyGrad.addColorStop(1, 'rgba(108, 92, 231, 0.0)');
+
+    new Chart(ctxMonthly, {
+        type: 'line',
+        data: {
+            labels: analytics.monthly.labels,
+            datasets: [{
+                label: 'Tasks Completed',
+                data: analytics.monthly.completed,
+                borderColor: '#6C5CE7',
+                borderWidth: 3,
+                pointBackgroundColor: '#FFFFFF',
+                pointBorderColor: '#6C5CE7',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                fill: true,
+                backgroundColor: monthlyGrad,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    grid: { color: '#F1F5F9' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // 3. Subject-wise Distribution (Doughnut)
+    const ctxSubject = document.getElementById('subjectChart').getContext('2d');
+    new Chart(ctxSubject, {
+        type: 'doughnut',
+        data: {
+            labels: analytics.subject.labels,
+            datasets: [{
+                data: analytics.subject.counts,
+                backgroundColor: analytics.subject.colors,
+                borderWidth: 2,
+                borderColor: '#FFFFFF'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+            },
+            cutout: '65%'
+        }
+    });
+
+    // 4. Priority-wise Distribution (Doughnut)
+    const ctxPriority = document.getElementById('priorityChart').getContext('2d');
+    new Chart(ctxPriority, {
+        type: 'doughnut',
+        data: {
+            labels: analytics.priority.labels,
+            datasets: [{
+                data: analytics.priority.counts,
+                backgroundColor: analytics.priority.colors,
+                borderWidth: 2,
+                borderColor: '#FFFFFF'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+            },
+            cutout: '65%'
+        }
+    });
+
+    // 5. Completed vs Pending Tasks (Status Breakdown)
+    const ctxStatus = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: analytics.status.labels,
+            datasets: [{
+                data: analytics.status.counts,
+                backgroundColor: analytics.status.colors,
+                borderWidth: 2,
+                borderColor: '#FFFFFF'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+            },
+            cutout: '65%'
+        }
+    });
+});
+</script>
+{% endblock %}

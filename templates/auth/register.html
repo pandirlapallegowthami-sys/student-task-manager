@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Student Task Manager{% endblock %}
+
+{% block auth_content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center py-5" style="background: linear-gradient(135deg, #F8F9FE 0%, #E8E5FD 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-9 col-lg-7 col-xl-6">
+                <div class="text-center mb-4">
+                    <div class="brand-icon mx-auto mb-3" style="width: 52px; height: 52px; font-size: 1.6rem;">
+                        <i class="bi bi-mortarboard-fill"></i>
+                    </div>
+                    <h2 class="fw-bold mb-1">Create Student Account</h2>
+                    <p class="text-secondary small">Supercharge your semester with smart task and study organization</p>
+                </div>
+
+                <div class="card-modern shadow-lg p-4 p-sm-5">
+                    <form method="POST" action="{{ url_for('auth_register') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label for="name" class="form-label-custom">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control-custom" id="name" name="name" value="{{ name or '' }}" placeholder="e.g. Alex Johnson" required autofocus>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="email" class="form-label-custom">Student Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control-custom" id="email" name="email" value="{{ email or '' }}" placeholder="alex@university.edu" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label for="college" class="form-label-custom">College / University</label>
+                                <input type="text" class="form-control-custom" id="college" name="college" value="{{ college or '' }}" placeholder="e.g. Stanford University">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="major" class="form-label-custom">Major / Degree</label>
+                                <input type="text" class="form-control-custom" id="major" name="major" value="{{ major or '' }}" placeholder="e.g. Computer Science">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="semester" class="form-label-custom">Current Semester / Academic Year</label>
+                            <input type="text" class="form-control-custom" id="semester" name="semester" value="{{ semester or '' }}" placeholder="e.g. Fall 2026 - Semester 5">
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <label for="password" class="form-label-custom">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control-custom" id="password" name="password" placeholder="At least 6 characters" required>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="confirm_password" class="form-label-custom">Confirm Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control-custom" id="confirm_password" name="confirm_password" placeholder="Repeat password" required>
+                            </div>
+                        </div>
+
+                        <div class="p-3 mb-4 rounded-3 bg-light border">
+                            <div class="d-flex align-items-center gap-2 text-primary fw-semibold small mb-1">
+                                <i class="bi bi-shield-check"></i>
+                                <span>Zero-Leakage Student Privacy Guaranteed</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.78rem;">
+                                Your tasks, schedules, and analytics remain strictly private and accessible only to your individual student account.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 justify-content-center shadow">
+                            <i class="bi bi-person-plus-fill"></i>
+                            <span>Complete Registration</span>
+                        </button>
+                    </form>
+
+                    <div class="mt-4 pt-3 text-center border-top">
+                        <p class="small text-secondary mb-0">Already registered? 
+                            <a href="{{ url_for('auth_login') }}" class="fw-bold text-primary">Sign In here</a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 text-muted small">
+                    Student Task Manager &bull; Smart Student Productivity System
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

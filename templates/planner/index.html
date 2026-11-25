@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Study Planner - Student Task Manager{% endblock %}
+{% block page_title %}Study Planner & Timetable{% endblock %}
+{% block page_subtitle %}Plan your daily study routines, recurring weekly timetable, and exam prep schedules{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Action Bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Academic Study Schedule</h4>
+            <p class="text-secondary small mb-0">Today is <strong>{{ today_day_name }}</strong>, {{ today_date.strftime('%B %d, %Y') }}</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#newScheduleModal">
+                <i class="bi bi-plus-lg"></i>
+                <span>Add Study Session</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Section 1: Today's Daily Study Planner -->
+    <div class="card-modern mb-4">
+        <div class="card-modern-header">
+            <h5 class="card-modern-title">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <span>Today's Study Checklist ({{ today_day_name }})</span>
+            </h5>
+            <span class="badge bg-light text-secondary border">{{ today_sessions|length }} Sessions Scheduled</span>
+        </div>
+        <div class="card-modern-body">
+            {% if today_sessions %}
+            <div class="row g-3">
+                {% for session in today_sessions %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-start justify-content-between gap-2" style="border-left: 4px solid {{ session.subject.color if session.subject else '#6C5CE7' }} !important;">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-light text-primary border" style="font-size: 0.72rem;">
+                                    <i class="bi bi-clock me-1"></i>{{ session.start_time }} - {{ session.end_time }}
+                                </span>
+                                {% if session.subject %}
+                                <span class="subject-tag py-0 px-2" style="font-size: 0.72rem;">{{ session.subject.name }}</span>
+                                {% endif %}
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1 {% if session.is_completed %}text-decoration-line-through text-muted{% endif %}">
+                                {{ session.title }}
+                            </h6>
+                            {% if session.location %}
+                            <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ session.location }}</div>
+                            {% endif %}
+                            {% if session.notes %}
+                            <div class="text-secondary small text-truncate" style="max-width: 250px;">{{ session.notes }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex flex-column align-items-end gap-2">
+                            <form method="POST" action="{{ url_for('planner_toggle', schedule_id=session.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="task-check-btn {% if session.is_completed %}completed{% endif %}" title="Mark Session Done">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('planner_delete', schedule_id=session.id) }}" onsubmit="return confirm('Remove this session?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm p-0 text-muted border-0" title="Delete">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-cup-hot text-primary fs-3 d-block mb-2"></i>
+                <h6 class="fw-bold text-dark mb-1">No Study Sessions Scheduled for Today</h6>
+                <p class="small text-muted mb-2">Take a well-deserved break or add a session using the button above.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 2: Weekly Timetable Grid -->
+    <div class="card-modern mb-4">
+        <div class="card-modern-header">
+            <h5 class="card-modern-title">
+                <i class="bi bi-calendar-week text-primary"></i>
+                <span>Weekly Study Timetable (Monday – Sunday)</span>
+            </h5>
+            <span class="text-muted small">Recurring weekly routine</span>
+        </div>
+        <div class="card-modern-body p-3">
+            <div class="row g-2">
+                {% for day in days %}
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="timetable-day-col {% if day == today_day_name %}border-primary shadow-sm{% endif %}">
+                        <div class="timetable-day-header">
+                            <span class="{% if day == today_day_name %}text-primary fw-bold{% endif %}">{{ day[:3] }}</span>
+                            <span class="badge bg-light text-muted border" style="font-size: 0.68rem;">{{ weekly_grid[day]|length }}</span>
+                        </div>
+
+                        {% if weekly_grid[day] %}
+                            {% for block in weekly_grid[day] %}
+                            <div class="timetable-block" style="border-left-color: {{ block.subject.color if block.subject else '#6C5CE7' }};">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="timetable-time">{{ block.start_time }} - {{ block.end_time }}</span>
+                                    <form method="POST" action="{{ url_for('planner_delete', schedule_id=block.id) }}" onsubmit="return confirm('Delete this timetable slot?');" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm p-0 text-muted border-0" title="Delete">
+                                            <i class="bi bi-trash" style="font-size: 0.72rem;"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="timetable-title">{{ block.title }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ block.subject.name if block.subject else 'General' }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4 text-muted" style="font-size: 0.75rem;">
+                                No classes/study
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Exam Preparation & Critical Academic Deadlines -->
+    <div class="row g-4">
+        <!-- Exam Preparation Schedules -->
+        <div class="col-lg-6">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-mortarboard text-danger"></i>
+                        <span>Exam Preparation Schedules</span>
+                    </h5>
+                    <button type="button" class="btn-outline-custom btn-sm" data-bs-toggle="modal" data-bs-target="#newScheduleModal">
+                        <i class="bi bi-plus"></i> Add Exam Prep
+                    </button>
+                </div>
+                <div class="card-modern-body p-3">
+                    {% if exam_prep_sessions %}
+                    <div class="list-group list-group-flush">
+                        {% for exam in exam_prep_sessions %}
+                        <div class="list-group-item px-2 py-3 border-bottom d-flex align-items-start justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size: 0.72rem;">
+                                        Exam Prep
+                                    </span>
+                                    {% if exam.specific_date %}
+                                    <span class="text-muted small">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ exam.specific_date.strftime('%b %d, %Y') }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">{{ exam.title }}</h6>
+                                <div class="text-secondary small">
+                                    <i class="bi bi-clock me-1"></i>{{ exam.start_time }} - {{ exam.end_time }}
+                                    {% if exam.location %} &bull; {{ exam.location }}{% endif %}
+                                </div>
+                                {% if exam.notes %}
+                                <div class="text-muted small mt-1">{{ exam.notes }}</div>
+                                {% endif %}
+                            </div>
+                            <form method="POST" action="{{ url_for('planner_delete', schedule_id=exam.id) }}" onsubmit="return confirm('Delete this exam prep schedule?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-light text-danger border-0">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted small">
+                        <i class="bi bi-journal-text fs-3 text-secondary d-block mb-1"></i>
+                        No specific exam prep schedules logged yet. Click "Add Exam Prep" to schedule targeted revision sessions!
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Exam & Assignment Milestones from Tasks -->
+        <div class="col-lg-6">
+            <div class="card-modern h-100">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-flag-fill text-primary"></i>
+                        <span>Exam & Test Deadlines (from Tasks)</span>
+                    </h5>
+                    <a href="{{ url_for('task_create') }}" class="text-primary small fw-semibold">Add Task</a>
+                </div>
+                <div class="card-modern-body p-3">
+                    {% if exam_tasks %}
+                    <ul class="list-unstyled mb-0">
+                        {% for task in exam_tasks %}
+                        <li class="p-3 mb-2 rounded-3 border bg-light d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="badge-pill-custom {{ task.priority_badge_class }}" style="font-size: 0.68rem;">{{ task.priority }}</span>
+                                    <span class="text-muted small">{{ task.subject.name if task.subject else 'General' }}</span>
+                                </div>
+                                <a href="{{ url_for('task_detail', task_id=task.id) }}" class="fw-bold text-dark text-decoration-none">
+                                    {{ task.title }}
+                                </a>
+                                <div class="text-muted small">Due: {{ task.due_date.strftime('%A, %b %d, %Y') }}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge-pill-custom {% if task.is_overdue %}badge-overdue{% else %}bg-primary-subtle text-primary{% endif %}">
+                                    {{ task.due_status_display }}
+                                </span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-4 text-muted small">
+                        <i class="bi bi-award fs-3 text-success d-block mb-1"></i>
+                        No upcoming exam deadlines detected in your task list.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Study Session Modal -->
+<div class="modal fade" id="newScheduleModal" tabindex="-1" aria-labelledby="newScheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content card-modern border-0">
+            <div class="card-modern-header">
+                <h5 class="card-modern-title" id="newScheduleModalLabel">
+                    <i class="bi bi-plus-circle text-primary"></i>
+                    <span>Add Study Session</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('planner_create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label-custom">Title / Activity <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control-custom" placeholder="e.g. Discrete Math Problem Set 4" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label-custom">Schedule Type</label>
+                            <select name="schedule_type" class="form-select-custom">
+                                <option value="Weekly Timetable">Weekly Timetable (Recurring)</option>
+                                <option value="Daily Study">Daily Study Session</option>
+                                <option value="Exam Prep">Exam Preparation</option>
+                                <option value="Assignment Working Session">Assignment Working Session</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label-custom">Subject</label>
+                            <select name="subject_id" class="form-select-custom">
+                                <option value="none">-- General Study --</option>
+                                {% for s in subjects %}
+                                <option value="{{ s.id }}">{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label-custom">Recurring Day of Week</label>
+                            <select name="day_of_week" class="form-select-custom">
+                                <option value="">Select Day (Optional)</option>
+                                {% for d in days %}
+                                <option value="{{ d }}">{{ d }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label-custom">Specific Date (for Exams/Once-off)</label>
+                            <input type="date" name="specific_date" class="form-control-custom">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label-custom">Start Time</label>
+                            <input type="time" name="start_time" class="form-control-custom" value="09:00" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label-custom">End Time</label>
+                            <input type="time" name="end_time" class="form-control-custom" value="10:30" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-custom">Location / Room (Optional)</label>
+                        <input type="text" name="location" class="form-control-custom" placeholder="e.g. Science Library Room 302, Zoom, Desk">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-custom">Notes / Goals</label>
+                        <textarea name="notes" class="form-control-custom" rows="2" placeholder="e.g. Solve questions 1 through 15 from chapter 4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-primary-custom btn-sm">
+                        <i class="bi bi-check-lg"></i> Save Session
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

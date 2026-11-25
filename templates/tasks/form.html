@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit Task{% else %}Create New Task{% endif %} - Student Task Manager{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Task{% else %}New Academic Task{% endif %}{% endblock %}
+{% block page_subtitle %}{% if is_edit %}Update details, change deadlines, or mark status{% else %}Organize your assignments, projects, exam preparation, and study goals{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card-modern shadow-sm">
+                <div class="card-modern-header">
+                    <h5 class="card-modern-title">
+                        <i class="bi bi-pencil-square text-primary"></i>
+                        <span>{% if is_edit %}Edit Task: {{ task.title }}{% else %}Task Details{% endif %}</span>
+                    </h5>
+                    <a href="{{ url_for('task_list') }}" class="btn-outline-custom btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Tasks
+                    </a>
+                </div>
+
+                <div class="card-modern-body p-4">
+                    <form method="POST" action="{% if is_edit %}{{ url_for('task_edit', task_id=task.id) }}{% else %}{{ url_for('task_create') }}{% endif %}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label-custom">Task Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control-custom" id="title" name="title" value="{{ task.title if task else '' }}" placeholder="e.g. Algorithms Assignment 3 - Dynamic Programming" required autofocus>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label-custom">Task Description & Instructions</label>
+                            <textarea class="form-control-custom" id="description" name="description" rows="3" placeholder="Add specific requirements, submission links, or research notes...">{{ task.description if task else '' }}</textarea>
+                        </div>
+
+                        <!-- Subject and Category -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="subject_id" class="form-label-custom">Subject / Course</label>
+                                <select class="form-select-custom" id="subject_id" name="subject_id">
+                                    <option value="none">-- General (No Subject) --</option>
+                                    {% for subj in subjects %}
+                                    <option value="{{ subj.id }}" {% if task and task.subject_id == subj.id %}selected{% endif %}>
+                                        {{ subj.name }} ({{ subj.code or 'No Code' }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Need a new subject? <a href="{{ url_for('subject_list') }}" target="_blank">Manage subjects</a>.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="category" class="form-label-custom">Task Category</label>
+                                <select class="form-select-custom" id="category" name="category">
+                                    {% set cats = ['Assignment', 'Project', 'Exam Prep', 'Reading', 'Lab Work', 'Presentation', 'General'] %}
+                                    {% for cat in cats %}
+                                    <option value="{{ cat }}" {% if task and task.category == cat %}selected{% endif %}>{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Priority and Status -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="priority" class="form-label-custom">Priority Level</label>
+                                <select class="form-select-custom" id="priority" name="priority">
+                                    <option value="High" {% if task and task.priority == 'High' %}selected{% endif %}>🔥 High Priority (Urgent / High Weight)</option>
+                                    <option value="Medium" {% if not task or task.priority == 'Medium' %}selected{% endif %}>⚡ Medium Priority (Normal)</option>
+                                    <option value="Low" {% if task and task.priority == 'Low' %}selected{% endif %}>🌱 Low Priority (Flexible)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label-custom">Current Status</label>
+                                <select class="form-select-custom" id="status" name="status">
+                                    <option value="Pending" {% if not task or task.status == 'Pending' %}selected{% endif %}>⏳ Pending</option>
+                                    <option value="In Progress" {% if task and task.status == 'In Progress' %}selected{% endif %}>🔄 In Progress</option>
+                                    <option value="Completed" {% if task and task.status == 'Completed' %}selected{% endif %}>✅ Completed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Dates and Time -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="start_date" class="form-label-custom">Start Date (Optional)</label>
+                                <input type="date" class="form-control-custom" id="start_date" name="start_date" value="{{ task.start_date.strftime('%Y-%m-%d') if task and task.start_date else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="due_date" class="form-label-custom">Due Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control-custom" id="due_date" name="due_date" value="{{ task.due_date.strftime('%Y-%m-%d') if task and task.due_date else '' }}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="due_time" class="form-label-custom">Due Time</label>
+                                <input type="time" class="form-control-custom" id="due_time" name="due_time" value="{{ task.due_time if task and task.due_time else '23:59' }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="estimated_hours" class="form-label-custom">Est. Hours</label>
+                                <input type="number" step="0.5" min="0.5" class="form-control-custom" id="estimated_hours" name="estimated_hours" value="{{ task.estimated_hours if task else '2.0' }}">
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top">
+                            <a href="{{ url_for('task_list') }}" class="btn-outline-custom">Cancel</a>
+                            <button type="submit" class="btn-primary-custom">
+                                <i class="bi bi-check-lg"></i>
+                                <span>{% if is_edit %}Save Changes{% else %}Create Task{% endif %}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

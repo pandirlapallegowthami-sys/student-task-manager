@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications & Reminders - Student Task Manager{% endblock %}
+{% block page_title %}Notifications & Alert Center{% endblock %}
+{% block page_subtitle %}Automated deadline reminders, overdue task alerts, and system notices{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <!-- Action Toolbar & Tabs -->
+            <div class="card-modern p-3 mb-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <ul class="nav nav-pills gap-1">
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 rounded-pill {% if current_filter == 'all' %}active bg-primary{% else %}text-secondary{% endif %}" href="{{ url_for('notification_list', type='all') }}">
+                                All
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 rounded-pill {% if current_filter == 'deadline' %}active bg-primary{% else %}text-secondary{% endif %}" href="{{ url_for('notification_list', type='deadline') }}">
+                                Deadlines
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 rounded-pill {% if current_filter == 'overdue' %}active bg-primary{% else %}text-secondary{% endif %}" href="{{ url_for('notification_list', type='overdue') }}">
+                                Overdue
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 rounded-pill {% if current_filter == 'reminder' %}active bg-primary{% else %}text-secondary{% endif %}" href="{{ url_for('notification_list', type='reminder') }}">
+                                Reminders
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <form method="POST" action="{{ url_for('notification_mark_all_read') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-custom">
+                                <i class="bi bi-check2-all"></i> Mark All as Read
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('notification_clear') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Clear Read
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications List -->
+            {% if notifications %}
+                {% for notif in notifications %}
+                <div class="notification-card {% if not notif.is_read %}unread{% endif %}" id="notif-card-{{ notif.id }}">
+                    <div class="notification-icon" style="
+                        {% if notif.notification_type == 'overdue' %}background: var(--danger-light); color: var(--danger);
+                        {% elif notif.notification_type == 'deadline' %}background: var(--warning-light); color: var(--warning);
+                        {% else %}background: var(--primary-light); color: var(--primary);{% endif %}">
+                        <i class="bi {% if notif.notification_type == 'overdue' %}bi-exclamation-octagon-fill{% elif notif.notification_type == 'deadline' %}bi-hourglass-split{% else %}bi-info-circle-fill{% endif %}"></i>
+                    </div>
+
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">{{ notif.title }}</h6>
+                                {% if not notif.is_read %}
+                                <span class="badge bg-primary rounded-pill" style="font-size: 0.65rem;">New</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted small">{{ notif.created_at.strftime('%b %d, %Y &bull; %I:%M %p') }}</span>
+                        </div>
+                        <p class="text-secondary small mb-2">{{ notif.message }}</p>
+                        
+                        <div class="d-flex align-items-center gap-3">
+                            {% if notif.action_link %}
+                            <a href="{{ notif.action_link }}" class="text-primary small fw-semibold">
+                                View Related Task <i class="bi bi-arrow-right"></i>
+                            </a>
+                            {% endif %}
+
+                            {% if not notif.is_read %}
+                            <button class="btn btn-link text-muted p-0 small text-decoration-none mark-notif-read-btn" data-notif-id="{{ notif.id }}">
+                                <i class="bi bi-check2"></i> Mark Read
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card-modern">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="bi bi-bell-slash"></i>
+                        </div>
+                        <h4 class="empty-state-title">No Notifications</h4>
+                        <p class="empty-state-text">You have no active alerts or reminders under this tab.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

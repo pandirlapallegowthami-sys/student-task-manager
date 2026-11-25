@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}My Tasks - Student Task Manager{% endblock %}
+{% block page_title %}Task Management{% endblock %}
+{% block page_subtitle %}Filter, organize, track deadlines, and accomplish your academic goals{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Search, Filters, and Action Bar -->
+    <div class="card-modern p-3 mb-4">
+        <form method="GET" action="{{ url_for('task_list') }}" id="filterForm">
+            <!-- Hidden view parameter -->
+            <input type="hidden" name="view" value="{{ view_mode }}">
+
+            <div class="row g-2 align-items-center">
+                <!-- Search Input -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control-custom border-start-0" placeholder="Search tasks by title..." value="{{ current_search or '' }}">
+                    </div>
+                </div>
+
+                <!-- Subject Filter -->
+                <div class="col-lg-2 col-md-3 col-sm-6">
+                    <select name="subject" class="form-select-custom" onchange="document.getElementById('filterForm').submit();">
+                        <option value="all">All Subjects</option>
+                        {% for subj in subjects %}
+                        <option value="{{ subj.id }}" {% if current_subject|string == subj.id|string %}selected{% endif %}>
+                            {{ subj.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="col-lg-2 col-md-3 col-sm-6">
+                    <select name="priority" class="form-select-custom" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">All Priorities</option>
+                        <option value="High" {% if current_priority == 'High' %}selected{% endif %}>High Priority</option>
+                        <option value="Medium" {% if current_priority == 'Medium' %}selected{% endif %}>Medium Priority</option>
+                        <option value="Low" {% if current_priority == 'Low' %}selected{% endif %}>Low Priority</option>
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <select name="status" class="form-select-custom" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">All Statuses</option>
+                        <option value="Pending" {% if current_status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                        <option value="Completed" {% if current_status == 'Completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+
+                <!-- Due Date Filter -->
+                <div class="col-lg-1 col-md-4 col-sm-6">
+                    <select name="due_date" class="form-select-custom" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">Due...</option>
+                        <option value="today" {% if current_due == 'today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if current_due == 'week' %}selected{% endif %}>This Week</option>
+                        <option value="overdue" {% if current_due == 'overdue' %}selected{% endif %}>Overdue</option>
+                    </select>
+                </div>
+
+                <!-- Sort Order -->
+                <div class="col-lg-2 col-md-4 col-sm-12">
+                    <select name="sort" class="form-select-custom" onchange="document.getElementById('filterForm').submit();">
+                        <option value="due_date_asc" {% if current_sort == 'due_date_asc' %}selected{% endif %}>Sort: Earliest Due</option>
+                        <option value="due_date_desc" {% if current_sort == 'due_date_desc' %}selected{% endif %}>Sort: Latest Due</option>
+                        <option value="priority_desc" {% if current_sort == 'priority_desc' %}selected{% endif %}>Sort: Highest Priority</option>
+                        <option value="title_asc" {% if current_sort == 'title_asc' %}selected{% endif %}>Sort: Title (A-Z)</option>
+                        <option value="created_desc" {% if current_sort == 'created_desc' %}selected{% endif %}>Sort: Recently Created</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Showing <strong>{{ tasks|length }}</strong> task{{ 's' if tasks|length != 1 else '' }}</span>
+                    {% if current_search or (current_subject and current_subject != 'all') or current_priority or current_status or current_due %}
+                    <a href="{{ url_for('task_list') }}" class="btn btn-sm btn-link text-danger text-decoration-none p-0 ms-2">
+                        <i class="bi bi-x-circle"></i> Reset Filters
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <!-- View Switcher -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('task_list', view='grid', search=current_search, subject=current_subject, priority=current_priority, status=current_status, due_date=current_due, sort=current_sort) }}" 
+                           class="btn {% if view_mode == 'grid' %}btn-primary{% else %}btn-outline-secondary{% endif %}" title="Grid View">
+                            <i class="bi bi-grid-fill"></i>
+                        </a>
+                        <a href="{{ url_for('task_list', view='table', search=current_search, subject=current_subject, priority=current_priority, status=current_status, due_date=current_due, sort=current_sort) }}" 
+                           class="btn {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-secondary{% endif %}" title="Table View">
+                            <i class="bi bi-list-ul"></i>
+                        </a>
+                    </div>
+
+                    <!-- New Task Button -->
+                    <a href="{{ url_for('task_create') }}" class="btn-primary-custom btn-sm">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Add New Task</span>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tasks Presentation (Grid or Table View) -->
+    {% if tasks %}
+        {% if view_mode == 'table' %}
+            <!-- Table View -->
+            <div class="card-modern">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">
+                                <th class="ps-4" style="width: 40px;">Done</th>
+                                <th>Task Title</th>
+                                <th>Subject</th>
+                                <th>Category</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr id="task-card-{{ task.id }}" class="{% if task.status == 'Completed' %}task-completed{% endif %}">
+                                <td class="ps-4">
+                                    <button type="button" class="task-check-btn task-toggle-btn {% if task.status == 'Completed' %}completed{% endif %}" data-task-id="{{ task.id }}" title="Toggle Status">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('task_detail', task_id=task.id) }}" class="task-title text-decoration-none mb-0 d-block" style="font-size: 0.95rem;">
+                                        {{ task.title }}
+                                    </a>
+                                    {% if task.description %}
+                                    <span class="text-muted small text-truncate d-block" style="max-width: 280px;">{{ task.description }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if task.subject %}
+                                    <span class="subject-tag">
+                                        <span class="subject-dot" style="background-color: {{ task.subject.color }};"></span>
+                                        {{ task.subject.name }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted small">General</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-secondary border">{{ task.category }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge-pill-custom {{ task.priority_badge_class }}">
+                                        {{ task.priority }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold {% if task.is_overdue %}text-danger{% elif task.days_remaining <= 1 %}text-warning{% else %}text-dark{% endif %}" style="font-size: 0.85rem;">
+                                        {{ task.due_date.strftime('%b %d, %Y') }}
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ task.due_status_display }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge-pill-custom {{ task.status_badge_class }}" id="task-status-badge-{{ task.id }}">
+                                        {{ task.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light border-0" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
+                                            <li><a class="dropdown-item-custom" href="{{ url_for('task_detail', task_id=task.id) }}"><i class="bi bi-eye"></i> View Details</a></li>
+                                            <li><a class="dropdown-item-custom" href="{{ url_for('task_edit', task_id=task.id) }}"><i class="bi bi-pencil"></i> Edit Task</a></li>
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('task_delete', task_id=task.id) }}" onsubmit="return confirm('Permanently delete this task?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item-custom text-danger border-0 bg-transparent w-100 text-start">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <!-- Grid View (Card-Based) -->
+            <div class="row g-4">
+                {% for task in tasks %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="task-card {% if task.status == 'Completed' %}task-completed{% endif %}" id="task-card-{{ task.id }}">
+                        <div>
+                            <div class="task-card-header">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="task-check-btn task-toggle-btn {% if task.status == 'Completed' %}completed{% endif %}" data-task-id="{{ task.id }}" title="Toggle Status">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    {% if task.subject %}
+                                    <span class="subject-tag">
+                                        <span class="subject-dot" style="background-color: {{ task.subject.color }};"></span>
+                                        {{ task.subject.name }}
+                                    </span>
+                                    {% else %}
+                                    <span class="subject-tag">General</span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge-pill-custom {{ task.priority_badge_class }}">
+                                        {{ task.priority }}
+                                    </span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm p-1 text-muted border-0" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
+                                            <li><a class="dropdown-item-custom" href="{{ url_for('task_detail', task_id=task.id) }}"><i class="bi bi-eye"></i> Details</a></li>
+                                            <li><a class="dropdown-item-custom" href="{{ url_for('task_edit', task_id=task.id) }}"><i class="bi bi-pencil"></i> Edit</a></li>
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('task_delete', task_id=task.id) }}" onsubmit="return confirm('Delete this task?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item-custom text-danger border-0 bg-transparent w-100 text-start">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a href="{{ url_for('task_detail', task_id=task.id) }}" class="text-decoration-none">
+                                <h5 class="task-title">{{ task.title }}</h5>
+                            </a>
+                            <p class="task-desc">{{ task.description or 'No extra notes provided.' }}</p>
+                        </div>
+
+                        <div>
+                            <div class="task-meta-row">
+                                <span class="badge bg-light text-secondary border">
+                                    <i class="bi bi-tag me-1"></i>{{ task.category }}
+                                </span>
+                                <span>
+                                    <i class="bi bi-stopwatch me-1"></i>{{ task.estimated_hours }} hr{{ 's' if task.estimated_hours != 1 else '' }}
+                                </span>
+                            </div>
+
+                            <div class="task-card-footer">
+                                <div>
+                                    <div class="fw-bold {% if task.is_overdue %}text-danger{% elif task.days_remaining <= 1 %}text-warning{% else %}text-dark{% endif %}" style="font-size: 0.82rem;">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ task.due_date.strftime('%b %d, %Y') }}
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ task.due_status_display }}</div>
+                                </div>
+                                <div>
+                                    <span class="badge-pill-custom {{ task.status_badge_class }}" id="task-status-badge-{{ task.id }}">
+                                        {{ task.status }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="card-modern">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <h4 class="empty-state-title">No Tasks Found</h4>
+                <p class="empty-state-text">
+                    {% if current_search or current_subject or current_priority or current_status or current_due %}
+                    No tasks match your selected filter criteria. Try clearing some filters or searching for something else.
+                    {% else %}
+                    You haven't created any tasks yet. Kickstart your academic productivity by scheduling your first assignment!
+                    {% endif %}
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                    {% if current_search or current_subject or current_priority or current_status or current_due %}
+                    <a href="{{ url_for('task_list') }}" class="btn btn-outline-custom">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset Filters
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('task_create') }}" class="btn-primary-custom">
+                        <i class="bi bi-plus-lg"></i> Create First Task
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

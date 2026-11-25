@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - Student Task Manager{% endblock %}
+{% block page_title %}Academic Calendar{% endblock %}
+{% block page_subtitle %}Visual calendar mapping all assignments, deadlines, exam dates, and study sessions{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="card-modern p-3 p-md-4 mb-4">
+        <!-- Legend Bar -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <span class="text-muted small fw-bold text-uppercase">Legend:</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i> Completed Tasks
+                </span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i> Overdue Tasks
+                </span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i> Pending / Subject Tasks
+                </span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i> Study Schedules
+                </span>
+            </div>
+
+            <div>
+                <a href="{{ url_for('task_create') }}" class="btn-primary-custom btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add Task
+                </a>
+            </div>
+        </div>
+
+        <!-- Calendar Container -->
+        <div id="calendar" style="min-height: 650px;"></div>
+    </div>
+</div>
+
+<!-- Event Details Modal -->
+<div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content card-modern border-0">
+            <div class="card-modern-header">
+                <h5 class="card-modern-title" id="eventModalTitle">
+                    <i class="bi bi-info-circle text-primary"></i>
+                    <span>Item Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span id="modalTypeBadge" class="badge-pill-custom"></span>
+                    <span id="modalSubjectBadge" class="subject-tag"></span>
+                </div>
+                <h4 id="modalEventTitle" class="fw-bold text-dark mb-2"></h4>
+                <div id="modalEventTime" class="text-secondary small mb-3"></div>
+                <div id="modalEventDescription" class="p-3 rounded-3 bg-light border small text-muted mb-3"></div>
+            </div>
+            <div class="modal-footer border-top p-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <div id="modalActionContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const modal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+        },
+        buttonText: {
+            today: 'Today',
+            dayGridMonth: 'Month',
+            timeGridWeek: 'Week',
+            timeGridDay: 'Day',
+            listMonth: 'List'
+        },
+        events: '/api/calendar-events',
+        eventTimeFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: 'short'
+        },
+        eventClick: function(info) {
+            info.jsEvent.preventDefault();
+            const props = info.event.extendedProps;
+
+            document.getElementById('modalEventTitle').textContent = info.event.title;
+            document.getElementById('modalEventTime').innerHTML = `<i class="bi bi-clock me-1"></i> ${info.event.start.toLocaleString()}`;
+
+            const descEl = document.getElementById('modalEventDescription');
+            const typeBadge = document.getElementById('modalTypeBadge');
+            const subjBadge = document.getElementById('modalSubjectBadge');
+            const actionContainer = document.getElementById('modalActionContainer');
+
+            if (props.type === 'task') {
+                typeBadge.className = 'badge-pill-custom ' + (props.status === 'Completed' ? 'badge-status-completed' : (props.is_overdue ? 'badge-overdue' : 'badge-status-progress'));
+                typeBadge.textContent = `Task: ${props.status} (${props.priority})`;
+
+                subjBadge.textContent = props.subject || 'General';
+                descEl.textContent = props.description || 'No description provided for this task.';
+
+                actionContainer.innerHTML = `
+                    <a href="/tasks/${props.task_id}" class="btn btn-primary-custom btn-sm">
+                        <i class="bi bi-eye"></i> View Full Task
+                    </a>
+                `;
+            } else {
+                typeBadge.className = 'badge-pill-custom badge-status-progress';
+                typeBadge.textContent = `Schedule: ${props.schedule_type}`;
+
+                subjBadge.textContent = props.subject || 'General Study';
+                let content = props.notes || 'No specific notes.';
+                if (props.location) {
+                    content += `\nLocation: ${props.location}`;
+                }
+                descEl.textContent = content;
+
+                actionContainer.innerHTML = `
+                    <a href="/planner" class="btn btn-primary-custom btn-sm">
+                        <i class="bi bi-calendar-range"></i> Open Study Planner
+                    </a>
+                `;
+            }
+
+            modal.show();
+        }
+    });
+
+    calendar.render();
+});
+</script>
+{% endblock %}
